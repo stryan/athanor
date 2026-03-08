@@ -1,0 +1,37 @@
+[tools]
+go = "latest"
+golangci-lint = "latest"
+gotestsum = "latest"
+
+[tasks.build]
+depends = ["generate"]
+description = "Build the project"
+sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
+run = "go build ./..."
+
+[tasks.check]
+depends = ["lint", "test"]
+description = "Run linters and tests"
+
+[tasks.generate]
+description = "Run go:generate"
+sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
+run = "go generate ./..."
+
+[tasks.lint]
+depends = ["build"]
+wait_for = ["test"]
+description = "Run linters"
+hide = true
+sources = ["go.mod", "go.sum", "go.work","go.work.sum","**/*.go"]
+run = "golangci-lint run"
+
+[tasks.test]
+depends = ["build"]
+description = "Run tests"
+sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
+run = "gotestsum -shuffle-on -race ./..."
+
+[tasks.install]
+depends = ["build"]
+run = "cp ./athanor ~/.local/bin/"
