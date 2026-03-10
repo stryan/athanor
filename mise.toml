@@ -3,11 +3,29 @@ go = "latest"
 golangci-lint = "latest"
 gotestsum = "latest"
 
+[vars]
+PKGVERSION = '{{exec(command="git describe --tags --abbrev=8 --dirty --always --long")}}'
+LDFLAGS = "{{ get_env(name='LDFLAGS',default='-w -s') }} -X 'main.Version={{vars.PKGVERSION}}'"
+
 [tasks.build]
-depends = ["generate"]
-description = "Build the project"
-sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
-run = "go build ./..."
+depends = ["build-amd64","build-arm64"]
+
+
+[tasks.build-amd64]
+depends = ["generate","lint"]
+description = "Build the project for amd64"
+sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
+outputs = ["./bin/athanor-amd64"]
+env = { GOOS = "linux", GOARCH = "amd64", CGO_ENABLED = 0 }
+run = 'go build -ldflags="{{vars.LDFLAGS}}" -o bin/athanor-amd64 ./...'
+
+[tasks.build-arm64]
+depends = ["generate","lint"]
+description = "Build the project for arm64"
+sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
+outputs = ["./bin/athanor-amd64"]
+env = { GOOS = "linux", GOARCH = "arm64", CGO_ENABLED = 0 }
+run = 'go build -ldflags="{{vars.LDFLAGS}}" -o bin/athanor-arm64 ./...'
 
 [tasks.check]
 depends = ["lint", "test"]
@@ -15,23 +33,22 @@ description = "Run linters and tests"
 
 [tasks.generate]
 description = "Run go:generate"
-sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
+sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 run = "go generate ./..."
 
 [tasks.lint]
-depends = ["build"]
 wait_for = ["test"]
 description = "Run linters"
 hide = true
-sources = ["go.mod", "go.sum", "go.work","go.work.sum","**/*.go"]
+sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 run = "golangci-lint run"
 
 [tasks.test]
 depends = ["build"]
 description = "Run tests"
-sources = ["go.mod", "go.sum","go.work","go.work.sum", "**/*.go"]
+sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 run = "gotestsum -shuffle-on -race ./..."
 
 [tasks.install]
 depends = ["build"]
-run = "cp ./athanor ~/.local/bin/"
+run = "cp ./bin/athanor-amd64 ~/.local/bin/"

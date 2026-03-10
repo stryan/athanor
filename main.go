@@ -55,7 +55,10 @@ func main() {
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			var err error
 			cfg, err = NewConfig(cmd.String("config"))
-			return ctx, err
+			if err != nil {
+				return ctx, fmt.Errorf("can not construct config: %w", err)
+			}
+			return ctx, validateConfig(cfg)
 		},
 		Commands: []*cli.Command{
 			{
@@ -204,4 +207,27 @@ func main() {
 	if err := app.Run(ctx, os.Args); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func validateConfig(cfg *Config) error {
+	if cfg.QuadletDir == "" {
+		return fmt.Errorf("need quadlet directory set")
+	}
+
+	if cfg.DataDir == "" {
+		return fmt.Errorf("need data directory set")
+	}
+	if cfg.OutputDir == "" {
+		return fmt.Errorf("need output directory set")
+	}
+	if _, err := os.Stat(cfg.QuadletDir); err != nil {
+		return fmt.Errorf("could not verify quadlet directory: %w", err)
+	}
+	if _, err := os.Stat(cfg.DataDir); err != nil {
+		return fmt.Errorf("could not verify data directory: %w", err)
+	}
+	if _, err := os.Stat(cfg.OutputDir); err != nil {
+		return fmt.Errorf("could not verify output directory: %w", err)
+	}
+	return nil
 }

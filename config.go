@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path/filepath"
@@ -86,4 +87,15 @@ func NewConfig(filename string) (*Config, error) {
 	}
 
 	return &c, nil
+}
+
+func (c *Config) String() string {
+	result := fmt.Sprintf("Config:\n Quadlet Dir: %v\nData Dir: %v\nOutput Dir: %v", c.QuadletDir, c.DataDir, c.OutputDir)
+	if c.CompressionCommand != "" {
+		result += fmt.Sprintf("\nCompression Command: %v\n", c.CompressionCommand)
+		result += fmt.Sprintf("Compression Suffix: %v", c.CompressionSuffix)
+	} else {
+		result += "\nCompression Disabled"
+	}
+	return result
 }
