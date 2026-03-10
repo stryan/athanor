@@ -3,6 +3,7 @@ module git.saintnet.tech/stryan/athanor
 go 1.26.0
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/log v0.4.2
 	github.com/containers/podman/v5 v5.8.0
 	github.com/knadh/koanf/parsers/toml v0.1.0

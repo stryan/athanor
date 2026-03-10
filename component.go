@@ -18,7 +18,7 @@ import (
 
 var athanorGroup = "X-Athanor"
 
-func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *components.Component) ([]actions.Action, error) {
+func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *components.Component, group string) ([]actions.Action, error) {
 	steps := make([]actions.Action, 0)
 	cfgs, err := parseQuadlets(ctx, c)
 	if err != nil {
@@ -38,6 +38,13 @@ func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *c
 	err = addParents(ctx, c, cfgs)
 	if err != nil {
 		return steps, fmt.Errorf("couldn't add parents: %w", err)
+	}
+	if group != "" {
+		for key, cfg := range cfgs {
+			if cfg.Group == group {
+				delete(cfgs, key)
+			}
+		}
 	}
 
 	steps, err = processConfigs(ctx, c, serv, cfgs)

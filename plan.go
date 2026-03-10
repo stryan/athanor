@@ -10,7 +10,7 @@ import (
 	"primamateria.systems/materia/pkg/services"
 )
 
-func buildPlan(ctx context.Context, compMgr *reader, conman containers.ContainerManager, serv services.ServiceManager, name string) (*plan.Plan, error) {
+func buildPlan(ctx context.Context, compMgr *reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*plan.Plan, error) {
 	compNames, err := compMgr.ListComponentNames()
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func buildPlan(ctx context.Context, compMgr *reader, conman containers.Container
 		if err != nil {
 			return nil, err
 		}
-		steps, err := PlanComponentBackup(ctx, serv, c)
+		steps, err := PlanComponentBackup(ctx, serv, c, group)
 		if err != nil {
 			return nil, err
 		}

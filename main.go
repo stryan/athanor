@@ -95,6 +95,11 @@ func main() {
 						Usage:   "Control output format. Supports text,json",
 						Value:   "text",
 					},
+					&cli.StringFlag{
+						Name:    "group",
+						Aliases: []string{"g"},
+						Usage:   "Backup only quadlets in group",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					compMgr := &reader{cfg.QuadletDir, cfg.DataDir}
@@ -111,7 +116,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"))
+					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
 					if err != nil {
 						return err
 					}
@@ -145,6 +150,11 @@ func main() {
 						Usage:   "Control output format. Supports text,json",
 						Value:   "text",
 					},
+					&cli.StringFlag{
+						Name:    "group",
+						Aliases: []string{"g"},
+						Usage:   "Backup only quadlets in group",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					compMgr := &reader{cfg.QuadletDir, cfg.DataDir}
@@ -161,7 +171,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"))
+					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
 					if err != nil {
 						return err
 					}
