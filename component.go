@@ -91,7 +91,7 @@ func addParents(ctx context.Context, c *components.Component, cfgs map[component
 		if v.Kind != components.ResourceTypeVolume {
 			continue
 		}
-		if cfg.Skip {
+		if cfg.Skip || cfg.InPlace {
 			continue
 		}
 		parents, err := findParents(c, v)
@@ -136,7 +136,7 @@ func processConfigs(ctx context.Context, c *components.Component, serv services.
 					},
 				})
 			}
-			if cfg.Skip {
+			if cfg.Skip || cfg.InPlace {
 				continue
 			}
 			serviceState, err := serv.GetService(ctx, res.Service())

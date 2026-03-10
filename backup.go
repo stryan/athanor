@@ -18,6 +18,7 @@ type ComponentBackupConfig struct {
 
 type QuadletBackupConfig struct {
 	Skip         bool   `toml:"skip"`
+	InPlace      bool   `toml:"inplace"`
 	Group        string `toml:"group"`
 	DumpCommand  string `toml:"dump_command"`
 	BackupScript string `toml:"backup_script"`
@@ -48,6 +49,10 @@ func ParseUnit(res components.Resource) (*QuadletBackupConfig, error) {
 			}
 		case "Group":
 			group, _ := unitfile.Lookup(athanorGroup, "Group")
+			target.Group = group
+
+		case "InPlace":
+			group, _ := unitfile.Lookup(athanorGroup, "InPlace")
 			target.Group = group
 		default:
 			continue
