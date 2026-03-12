@@ -123,9 +123,39 @@ func parseManifest(ctx context.Context, c *components.Component) (*ComponentBack
 func processConfigs(ctx context.Context, c *components.Component, serv services.ServiceManager, configs map[components.Resource]*QuadletBackupConfig) ([]actions.Action, error) {
 	var steps []actions.Action
 	for res, cfg := range configs {
+		if cfg.Skip {
+			continue
+		}
 		switch res.Kind {
 		case components.ResourceTypeContainer, components.ResourceTypePod:
+			serviceState, err := serv.GetService(ctx, res.Service())
+			if err != nil {
+				return steps, err
+			}
 			if cfg.DumpCommand != "" {
+				if serviceState.State == "inactive" {
+					// start up an inactive container
+					waitState := "active"
+					steps = append(steps, actions.Action{
+						Todo:     actions.ActionStart,
+						Parent:   c,
+						Target:   res,
+						Priority: 1,
+						Metadata: &actions.ActionMetadata{
+							ServiceUntilState: &waitState,
+						},
+					})
+					endState := "inactive"
+					steps = append(steps, actions.Action{
+						Todo:     actions.ActionStop,
+						Parent:   c,
+						Target:   res,
+						Priority: 2,
+						Metadata: &actions.ActionMetadata{
+							ServiceUntilState: &endState,
+						},
+					})
+				}
 				steps = append(steps, actions.Action{
 					Todo:     actions.ActionExecute,
 					Parent:   c,
@@ -136,12 +166,8 @@ func processConfigs(ctx context.Context, c *components.Component, serv services.
 					},
 				})
 			}
-			if cfg.Skip || cfg.InPlace {
+			if cfg.InPlace {
 				continue
-			}
-			serviceState, err := serv.GetService(ctx, res.Service())
-			if err != nil {
-				return steps, err
 			}
 			if serviceState.State == "active" || serviceState.State == "activating" {
 				waitState := "inactive"
@@ -167,9 +193,6 @@ func processConfigs(ctx context.Context, c *components.Component, serv services.
 			}
 
 		case components.ResourceTypeVolume:
-			if cfg.Skip {
-				continue
-			}
 			dumpCommand := actions.Action{
 				Todo:     actions.ActionDump,
 				Parent:   c,
