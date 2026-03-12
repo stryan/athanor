@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime/debug"
 
+	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"github.com/charmbracelet/log"
 	"github.com/urfave/cli/v3"
 	"primamateria.systems/materia/pkg/containers"
@@ -27,7 +28,7 @@ var Commit = func() string {
 
 func main() {
 	ctx := context.Background()
-	var cfg *Config
+	var cfg *athanor.Config
 
 	app := &cli.Command{
 		Name:  "athanor",
@@ -54,7 +55,7 @@ func main() {
 		},
 		Before: func(ctx context.Context, cmd *cli.Command) (context.Context, error) {
 			var err error
-			cfg, err = NewConfig(cmd.String("config"))
+			cfg, err = athanor.NewConfig(cmd.String("config"))
 			if err != nil {
 				return ctx, fmt.Errorf("can not construct config: %w", err)
 			}
@@ -105,7 +106,7 @@ func main() {
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					compMgr := &reader{cfg.QuadletDir, cfg.DataDir}
+					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
 					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
 						SecretsPrefix:      "materia-",
 						CompressionCommand: cfg.CompressionCommand,
@@ -160,7 +161,7 @@ func main() {
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					compMgr := &reader{cfg.QuadletDir, cfg.DataDir}
+					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
 					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
 						SecretsPrefix:      "materia-",
 						CompressionCommand: cfg.CompressionCommand,
@@ -184,9 +185,9 @@ func main() {
 							return err
 						}
 					}
-					writer := &Writer{
-						*serv,
-						conman,
+					writer := &athanor.Writer{
+						ServiceManager:   *serv,
+						ContainerManager: conman,
 					}
 
 					doit := executor.NewExecutor(executor.ExecutorConfig{
@@ -209,7 +210,7 @@ func main() {
 	}
 }
 
-func validateConfig(cfg *Config) error {
+func validateConfig(cfg *athanor.Config) error {
 	if cfg.QuadletDir == "" {
 		return fmt.Errorf("need quadlet directory set")
 	}

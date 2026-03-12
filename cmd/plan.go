@@ -5,12 +5,13 @@ import (
 	"fmt"
 	"slices"
 
+	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"primamateria.systems/materia/pkg/containers"
 	"primamateria.systems/materia/pkg/plan"
 	"primamateria.systems/materia/pkg/services"
 )
 
-func buildPlan(ctx context.Context, compMgr *reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*plan.Plan, error) {
+func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*plan.Plan, error) {
 	compNames, err := compMgr.ListComponentNames()
 	if err != nil {
 		return nil, err
@@ -26,11 +27,11 @@ func buildPlan(ctx context.Context, compMgr *reader, conman containers.Container
 
 	p := plan.NewPlan()
 	for _, cname := range compNames {
-		c, err := loadComponent(ctx, conman, compMgr, cname)
+		c, err := athanor.LoadComponent(ctx, conman, compMgr, cname)
 		if err != nil {
 			return nil, err
 		}
-		steps, err := PlanComponentBackup(ctx, serv, c, group)
+		steps, err := athanor.PlanComponentBackup(ctx, serv, c, group)
 		if err != nil {
 			return nil, err
 		}

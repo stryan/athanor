@@ -1,4 +1,4 @@
-package main
+package athanor
 
 import (
 	"errors"
@@ -16,12 +16,12 @@ import (
 	"primamateria.systems/materia/pkg/manifests"
 )
 
-type reader struct {
+type Reader struct {
 	QuadletPrefix string
 	DataPrefix    string
 }
 
-func (r *reader) GetComponent(name string) (*components.Component, error) {
+func (r *Reader) GetComponent(name string) (*components.Component, error) {
 	comp := components.NewComponent(name)
 	dataPath := filepath.Join(r.DataPrefix, name)
 	quadletPath := filepath.Join(r.QuadletPrefix, name)
@@ -88,7 +88,7 @@ func (r *reader) GetComponent(name string) (*components.Component, error) {
 	return comp, nil
 }
 
-func (r *reader) GetResource(parent *components.Component, name string) (components.Resource, error) {
+func (r *Reader) GetResource(parent *components.Component, name string) (components.Resource, error) {
 	if parent == nil || name == "" {
 		return components.Resource{}, errors.New("invalid parent or resource")
 	}
@@ -103,11 +103,11 @@ func (r *reader) GetResource(parent *components.Component, name string) (compone
 	return components.Resource{}, errors.New("resource not found")
 }
 
-func (r *reader) GetManifest(parent *components.Component) (*manifests.ComponentManifest, error) {
+func (r *Reader) GetManifest(parent *components.Component) (*manifests.ComponentManifest, error) {
 	return manifests.LoadComponentManifestFromFile(filepath.Join(r.DataPrefix, parent.Name, manifests.ComponentManifestFile))
 }
 
-func (r *reader) ReadResource(res components.Resource) (string, error) {
+func (r *Reader) ReadResource(res components.Resource) (string, error) {
 	resPath := ""
 	if res.Kind == components.ResourceTypeDirectory {
 		return "", nil
@@ -128,7 +128,7 @@ func (r *reader) ReadResource(res components.Resource) (string, error) {
 	return string(curFile), nil
 }
 
-func (r *reader) ListResources(c *components.Component) ([]components.Resource, error) {
+func (r *Reader) ListResources(c *components.Component) ([]components.Resource, error) {
 	if c == nil {
 		return []components.Resource{}, errors.New("invalid parent or resource")
 	}
@@ -164,7 +164,7 @@ func (r *reader) ListResources(c *components.Component) ([]components.Resource, 
 	return resources, nil
 }
 
-func (reader *reader) ComponentExists(name string) (bool, error) {
+func (reader *Reader) ComponentExists(name string) (bool, error) {
 	path := filepath.Join(reader.DataPrefix, name)
 	_, err := os.Stat(path)
 	if os.IsNotExist(err) {
@@ -185,7 +185,7 @@ func (reader *reader) ComponentExists(name string) (bool, error) {
 	return true, nil
 }
 
-func (r *reader) ListComponentNames() ([]string, error) {
+func (r *Reader) ListComponentNames() ([]string, error) {
 	var compPaths []string
 	entries, err := os.ReadDir(r.QuadletPrefix)
 	if err != nil {
@@ -209,11 +209,11 @@ func (r *reader) ListComponentNames() ([]string, error) {
 	return compPaths, nil
 }
 
-func (reader *reader) Clean() error {
+func (reader *Reader) Clean() error {
 	return nil
 }
 
-func (r *reader) NewResource(parent *components.Component, path string) (components.Resource, error) {
+func (r *Reader) NewResource(parent *components.Component, path string) (components.Resource, error) {
 	fileInfo, err := os.Stat(path)
 	if err != nil {
 		return components.Resource{}, err

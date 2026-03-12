@@ -1,4 +1,4 @@
-package main
+package athanor
 
 import (
 	"context"
@@ -54,7 +54,7 @@ func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *c
 	return steps, nil
 }
 
-func loadComponent(ctx context.Context, conMgr containers.ContainerManager, compMgr *reader, compName string) (*components.Component, error) {
+func LoadComponent(ctx context.Context, conMgr containers.ContainerManager, compMgr *Reader, compName string) (*components.Component, error) {
 	pipeline := loader.NewHostComponentPipeline(compMgr, conMgr)
 	comp := components.NewComponent(compName)
 	err := pipeline.Load(ctx, comp)
