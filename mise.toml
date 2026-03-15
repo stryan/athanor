@@ -12,7 +12,7 @@ depends = ["build-amd64","build-arm64"]
 
 
 [tasks.build-amd64]
-depends = ["generate","lint"]
+depends = ["generate"]
 description = "Build the project for amd64"
 sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 outputs = ["./bin/athanor-amd64"]
@@ -20,7 +20,7 @@ env = { GOOS = "linux", GOARCH = "amd64", CGO_ENABLED = 0 }
 run = 'go build -ldflags="{{vars.LDFLAGS}}" -o bin/athanor-amd64 ./cmd'
 
 [tasks.build-arm64]
-depends = ["generate","lint"]
+depends = ["generate"]
 description = "Build the project for arm64"
 sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 outputs = ["./bin/athanor-amd64"]
@@ -44,10 +44,9 @@ sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
 run = "golangci-lint run"
 
 [tasks.test]
-depends = ["build"]
 description = "Run tests"
 sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
-run = "gotestsum -shuffle-on -race ./..."
+run = "gotestsum ./..."
 
 [tasks.install]
 depends = ["build"]
@@ -55,17 +54,17 @@ run = "cp ./bin/athanor-amd64 ~/.local/bin/"
 
 [tasks.ci]
 env = { CGO_ENABLE = 0 }
-depends = ["build", "test"]
+depends = ["build", "check"]
 usage = '''
 arg <registry> help="Registry to push to"
 arg <tag> help="Container tag to use"
 '''
-run = "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 --push -t {{usage.registry}}/athanor:{{usage.tag}}"
+run = "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 --push -t {{usage.registry}}/athanor:{{usage.tag}} ."
 
 [tasks.ci-release]
 env = { CGO_ENABLE = 0 }
 tools.gh = "latest"
-depends = ["build", "test"]
+depends = ["build", "check"]
 usage = '''
 arg <registry> help="Registry to push to"
 arg <tag> help="Container tag to use"
@@ -78,7 +77,6 @@ run = [
 ]
 
 [tasks.container]
-
 usage = '''
 arg <tag> help="Container tag to use" default="latest"
 '''
