@@ -52,3 +52,34 @@ run = "gotestsum -shuffle-on -race ./..."
 [tasks.install]
 depends = ["build"]
 run = "cp ./bin/athanor-amd64 ~/.local/bin/"
+
+[tasks.ci]
+env = { CGO_ENABLE = 0 }
+depends = ["build", "test"]
+usage = '''
+arg <registry> help="Registry to push to"
+arg <tag> help="Container tag to use"
+'''
+run = "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 --push -t {{usage.registry}}/athanor:{{usage.tag}}"
+
+[tasks.ci-release]
+env = { CGO_ENABLE = 0 }
+tools.gh = "latest"
+depends = ["build", "test"]
+usage = '''
+arg <registry> help="Registry to push to"
+arg <tag> help="Container tag to use"
+'''
+run = [
+  "git remote add mirror git@github.com:stryan/athanor",
+  "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 -t {{usage.registry}}/athanor:{{usage.tag}} -t {{usage.registry}}/athanor:stable -t ghcr.io/stryan/athanor:{{usage.tag}} -t ghcr.io/stryan/athanor:stable --push .",
+  "gh release create {{usage.tag}} -d -F CHANGELOG.md --generate-notes ./bin/athanor*",
+  "git remote rm mirror",
+]
+
+[tasks.container]
+
+usage = '''
+arg <tag> help="Container tag to use" default="latest"
+'''
+run = "podman build -f Containerfile.ci --platform=linux/amd64 -t primamateria.systems/athanor:{{usage.latest}} ."
