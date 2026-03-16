@@ -69,6 +69,7 @@ Main command config options:
 - `output_dir`: Where to output the backup files. Defaults to `/var/backups` or `$XDG_DATA_HOME/backups`
 - `compression_command`: What command to use to compress the backups, if any
 - `compression_suffix`: What file suffix to add to compressed backups
+- `webhook`: Webhook notification destination
 
 
 The actual backup configuration is done on the `.volume` or `.container` Quadlet files. The following options are valid:

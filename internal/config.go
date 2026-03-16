@@ -56,6 +56,7 @@ type Config struct {
 	CompressionSuffix  string `toml:"compression_suffix" koanf:"compression_suffix"`
 	HostMode           bool   // TODO
 	PostCommand        string `toml:"post_command" koanf:"post_command"`
+	Webhook            string `toml:"webhook" koanf:"webhook"`
 }
 
 func NewConfig(filename string) (*Config, error) {
@@ -85,12 +86,24 @@ func NewConfig(filename string) (*Config, error) {
 	if err = k.Unmarshal("", &c); err != nil {
 		return nil, err
 	}
+	if c.CompressionSuffix == "" {
+		switch c.CompressionCommand {
+		case "zstd":
+			c.CompressionSuffix = "zstd"
+		case "gzip":
+			c.CompressionSuffix = "gz"
+		case "zip":
+			c.CompressionSuffix = "zip"
+		default:
+			c.CompressionSuffix = "compressed"
+		}
+	}
 
 	return &c, nil
 }
 
 func (c *Config) String() string {
-	result := fmt.Sprintf("Config:\n Quadlet Dir: %v\nData Dir: %v\nOutput Dir: %v", c.QuadletDir, c.DataDir, c.OutputDir)
+	result := fmt.Sprintf("Config:\nQuadlet Dir: %v\nData Dir: %v\nOutput Dir: %v", c.QuadletDir, c.DataDir, c.OutputDir)
 	if c.CompressionCommand != "" {
 		result += fmt.Sprintf("\nCompression Command: %v\n", c.CompressionCommand)
 		result += fmt.Sprintf("Compression Suffix: %v", c.CompressionSuffix)

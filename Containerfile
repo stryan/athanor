@@ -11,7 +11,7 @@ RUN mkdir -p /root/.ssh && \
 	chmod 0700 /root/.ssh && \
 	touch /root/.ssh/known_hosts
 
-RUN zypper in -y podman && zypper clean
+RUN zypper in -y podman zstd && zypper clean
 
 COPY ./bin/athanor-${TARGETARCH} /app/athanor
 

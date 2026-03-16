@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"runtime/debug"
@@ -66,7 +67,7 @@ func main() {
 				Name:  "config",
 				Usage: "Show athanor config",
 				Action: func(ctx context.Context, cmd *cli.Command) error {
-					log.Print(cfg)
+					fmt.Println(cfg)
 					return nil
 				},
 			},
@@ -133,6 +134,7 @@ func main() {
 					return nil
 				},
 			},
+
 			{
 				Name:  "backup",
 				Usage: "Backup one or more components",
@@ -166,6 +168,7 @@ func main() {
 						SecretsPrefix:      "materia-",
 						CompressionCommand: cfg.CompressionCommand,
 						CompressionSuffix:  cfg.CompressionSuffix,
+						Remote:             (os.Getenv("container") == "podman"),
 					})
 					if err != nil {
 						return err
@@ -201,6 +204,57 @@ func main() {
 					}
 
 					return nil
+				},
+			},
+			{
+				Name:  "notify",
+				Usage: "Send notifications",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "success",
+						Aliases: []string{"s"},
+						Usage:   "Send backup successful notifications",
+					},
+					&cli.BoolFlag{
+						Name:    "failure",
+						Aliases: []string{"f"},
+						Usage:   "Send backup failure notifications",
+					},
+
+					&cli.BoolFlag{
+						Name:    "heartbeat",
+						Aliases: []string{"h"},
+						Usage:   "Send heartbeast notification (i.e. no attached message, just a POST)",
+					},
+					&cli.StringFlag{
+						Name:    "webhook",
+						Aliases: []string{"w"},
+						Usage:   "Webhook to use instead of configured one",
+					},
+				},
+				Action: func(ctx context.Context, c *cli.Command) error {
+					if cfg.Webhook == "" && c.String("webhook") == "" {
+						return errors.New("need webhook location defined for notify")
+					}
+					if !c.Bool("success") && !c.Bool("failure") && !c.Bool("heartbeat") {
+						return errors.New("need notification type")
+					}
+					dest := cfg.Webhook
+					if dest == "" {
+						dest = c.String("webhook")
+					}
+					hostname, err := os.Hostname()
+					if err != nil {
+						return fmt.Errorf("error getting hostname: %w", err)
+					}
+					if c.Bool("success") {
+						err = athanor.Notify(ctx, dest, hostname, "Backup was succesful")
+					} else if c.Bool("failure") {
+						err = athanor.Notify(ctx, dest, hostname, "Backup failed!")
+					} else {
+						err = athanor.Notify(ctx, dest, hostname, "")
+					}
+					return err
 				},
 			},
 		},
