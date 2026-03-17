@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"runtime/debug"
+	"time"
 
 	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"github.com/charmbracelet/log"
@@ -31,6 +32,11 @@ func main() {
 	ctx := context.Background()
 	var cfg *athanor.Config
 
+	hostname, err := os.Hostname()
+	if err != nil {
+		log.Warnf("error getting hostname,setting to undefined: %v", err)
+		hostname = "undefined"
+	}
 	app := &cli.Command{
 		Name:  "athanor",
 		Usage: "Backup quadlet volumes",
@@ -126,7 +132,7 @@ func main() {
 						return err
 					}
 					if !cmd.Bool("quiet") {
-						err = printPlan(plan, cmd.String("format"))
+						err = printBackupPlan(plan, cmd.String("format"))
 						if err != nil {
 							return err
 						}
@@ -161,8 +167,22 @@ func main() {
 						Aliases: []string{"g"},
 						Usage:   "Backup only quadlets in group",
 					},
+					&cli.StringFlag{
+						Name:    "webhook",
+						Aliases: []string{"w"},
+						Usage:   "Webhook to use instead of configured one",
+					},
+					&cli.BoolFlag{
+						Name:    "notify",
+						Aliases: []string{"r"},
+						Usage:   "Send backup report notification",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
+					report := &athanor.BackupReport{
+						Hostname:  hostname,
+						StartTime: time.Now(),
+					}
 					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
 					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
 						SecretsPrefix:      "materia-",
@@ -172,6 +192,10 @@ func main() {
 					})
 					if err != nil {
 						return err
+					}
+					shouldNotify := cfg.Notify
+					if cmd.HasName("notify") {
+						shouldNotify = cmd.Bool("notify")
 					}
 					serv, err := services.NewServices(ctx, &services.ServicesConfig{})
 					if err != nil {
@@ -183,7 +207,7 @@ func main() {
 						return err
 					}
 					if !cmd.Bool("quiet") {
-						err = printPlan(plan, cmd.String("format"))
+						err = printBackupPlan(plan, cmd.String("format"))
 						if err != nil {
 							return err
 						}
@@ -198,9 +222,31 @@ func main() {
 						QuadletDir: cfg.QuadletDir,
 						OutputDir:  cfg.OutputDir,
 					}, writer, 90)
-					_, err = doit.Execute(ctx, plan)
+					for _, c := range plan.Keys() {
+						if !cmd.Bool("quiet") {
+							fmt.Printf("Backing up %v\n", c)
+						}
+						p := plan.Components[c]
+						_, err = doit.Execute(ctx, p)
+						report.AddReport(c, p, err)
+					}
+					report.EndTime = time.Now()
+					finalReport, err := report.Report()
 					if err != nil {
-						return err
+						return fmt.Errorf("could not generate final report: %w", err)
+					}
+					if !cmd.Bool("quiet") {
+						fmt.Println(finalReport)
+					}
+					if shouldNotify {
+						dest := cfg.Webhook
+						if dest == "" {
+							dest = cmd.String("webhook")
+						}
+						err = athanor.Notify(ctx, dest, hostname, finalReport)
+						if err != nil {
+							return fmt.Errorf("could not send final report: %w", err)
+						}
 					}
 
 					return nil

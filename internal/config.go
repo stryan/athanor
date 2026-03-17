@@ -56,6 +56,7 @@ type Config struct {
 	CompressionSuffix  string `toml:"compression_suffix" koanf:"compression_suffix"`
 	HostMode           bool   // TODO
 	PostCommand        string `toml:"post_command" koanf:"post_command"`
+	Notify             bool   `toml:"notify" koanf:"notify"`
 	Webhook            string `toml:"webhook" koanf:"webhook"`
 }
 

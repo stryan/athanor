@@ -80,4 +80,4 @@ run = [
 usage = '''
 arg <tag> help="Container tag to use" default="latest"
 '''
-run = "podman build -f Containerfile.ci --platform=linux/amd64 -t primamateria.systems/athanor:{{usage.latest}} ."
+run = "podman build -f Containerfile.ci --platform=linux/amd64 -t primamateria.systems/athanor:{{usage.tag}} ."

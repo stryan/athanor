@@ -11,7 +11,26 @@ import (
 	"primamateria.systems/materia/pkg/services"
 )
 
-func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*plan.Plan, error) {
+type BackupPlan struct {
+	Components map[string]*plan.Plan
+}
+
+func NewBackupPlan() *BackupPlan {
+	return &BackupPlan{
+		Components: make(map[string]*plan.Plan),
+	}
+}
+
+func (bp *BackupPlan) Keys() []string {
+	keys := make([]string, 0, len(bp.Components))
+	for k := range bp.Components {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*BackupPlan, error) {
 	compNames, err := compMgr.ListComponentNames()
 	if err != nil {
 		return nil, err
@@ -24,9 +43,9 @@ func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.C
 			return nil, fmt.Errorf("component not found: %v", name)
 		}
 	}
-
-	p := plan.NewPlan()
+	fullPlan := NewBackupPlan()
 	for _, cname := range compNames {
+		p := plan.NewPlan()
 		c, err := athanor.LoadComponent(ctx, conman, compMgr, cname)
 		if err != nil {
 			return nil, err
@@ -38,9 +57,27 @@ func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.C
 		if err = p.Append(steps); err != nil {
 			return nil, err
 		}
+		fullPlan.Components[cname] = p
 	}
 
-	return p, nil
+	return fullPlan, nil
+}
+
+func printBackupPlan(bp *BackupPlan, format string) error {
+	if len(bp.Components) == 0 {
+		fmt.Println("no changes made")
+		return nil
+	}
+	for _, c := range bp.Keys() {
+		p := bp.Components[c]
+		err := printPlan(p, format)
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 }
 
 func printPlan(p *plan.Plan, format string) error {
