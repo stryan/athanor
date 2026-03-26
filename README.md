@@ -72,6 +72,7 @@ Main command config options:
 - `compression_command`: What command to use to compress the backups, if any
 - `compression_suffix`: What file suffix to add to compressed backups
 - `webhook`: Webhook notification destination
+- `hostmode`: Experimental. Backup volumes that aren't a part of components. Essentially treats every quadlet not in a component as part of one big pseudo-component named "host".
 
 
 The actual backup configuration is done on the `.volume` or `.container` Quadlet files. The following options are valid:
@@ -80,6 +81,7 @@ The actual backup configuration is done on the `.volume` or `.container` Quadlet
 - `InPlace`: For containers, do not stop/start this container during the backup. For volumes, do not start/stop the containers mounting the volume
 - `Group`: Optional group name
 - `DumpCommand`: For containers, a command to perform in the container with `podman exec`
+- `PostCommand`: Script to run or service/target to start after backing up
 
 Backup configurations can also be provided in a components `MANIFEST.toml` like so:
 
