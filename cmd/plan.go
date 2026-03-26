@@ -13,12 +13,14 @@ import (
 )
 
 type BackupPlan struct {
-	Components map[string]*plan.Plan `json:"components"`
+	Components     map[string]*plan.Plan `json:"components"`
+	OutputLocation string
 }
 
-func NewBackupPlan() *BackupPlan {
+func NewBackupPlan(cfg *athanor.Config) *BackupPlan {
 	return &BackupPlan{
-		Components: make(map[string]*plan.Plan),
+		Components:     make(map[string]*plan.Plan),
+		OutputLocation: cfg.OutputDir,
 	}
 }
 
@@ -48,7 +50,7 @@ func buildPlan(ctx context.Context, cfg *athanor.Config, compMgr *athanor.Reader
 			return nil, fmt.Errorf("component not found: %v", name)
 		}
 	}
-	fullPlan := NewBackupPlan()
+	fullPlan := NewBackupPlan(cfg)
 	for _, cname := range compNames {
 		p := plan.NewPlan()
 		c, err := athanor.LoadComponent(ctx, conman, compMgr, cname)
@@ -90,6 +92,8 @@ func printBackupPlan(bp *BackupPlan, format string) error {
 	}
 	switch format {
 	case "text":
+		fmt.Println("Backup Plan:")
+		fmt.Printf("Backing up to: %v\n", bp.OutputLocation)
 		for _, c := range bp.Keys() {
 			p := bp.Components[c]
 			fmt.Printf("%v Plan:\n", c)

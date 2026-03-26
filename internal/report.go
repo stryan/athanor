@@ -35,19 +35,31 @@ func (r *BackupReport) Report() (string, error) {
 	if err != nil {
 		return "", err
 	}
+	_, err = result.WriteString("Successs: ")
+	if err != nil {
+		return "", err
+	}
 	for _, c := range r.Successes {
-		_, err := result.WriteString(c.String() + "\n")
+		_, err := result.WriteString(c.Name)
 		if err != nil {
 			return "", err
 		}
+	}
+	_, err = result.WriteString("Skipped: ")
+	if err != nil {
+		return "", err
+	}
+	for _, c := range r.Successes {
+		_, err := result.WriteString(c.Name + " ")
+		if err != nil {
+			return "", err
+		}
+	}
+	_, err = result.WriteString("Failures: ")
+	if err != nil {
+		return "", err
 	}
 	for _, c := range r.Failures {
-		_, err := result.WriteString(c.String() + "\n")
-		if err != nil {
-			return "", err
-		}
-	}
-	for _, c := range r.Skipped {
 		_, err := result.WriteString(c.String() + "\n")
 		if err != nil {
 			return "", err
