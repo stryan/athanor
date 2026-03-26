@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/containers/podman/v5/pkg/systemd/parser"
 	"primamateria.systems/materia/pkg/components"
 )
@@ -12,8 +14,9 @@ import (
 var ErrNoConfig = errors.New("no athanor config")
 
 type ComponentBackupConfig struct {
-	Volumes    map[string]QuadletBackupConfig
-	Containers map[string]QuadletBackupConfig
+	Volumes     map[string]QuadletBackupConfig
+	Containers  map[string]QuadletBackupConfig
+	PostCommand string `toml:"PostCommand"`
 }
 
 type QuadletBackupConfig struct {
@@ -59,4 +62,28 @@ func ParseUnit(res components.Resource) (*QuadletBackupConfig, error) {
 		}
 	}
 	return target, nil
+}
+
+func ParseManifest(manifestResource components.Resource) (*ComponentBackupConfig, error) {
+	var maniCfg ComponentBackupConfig
+	err := toml.Unmarshal([]byte(manifestResource.Content), &maniCfg)
+	if err != nil {
+		return nil, err
+	}
+	return &maniCfg, nil
+}
+
+func ParsePostCommand(parent, cmd string) components.Resource {
+	if strings.HasSuffix(cmd, ".service") || strings.HasSuffix(cmd, ".target") {
+		return components.Resource{
+			Path:   cmd,
+			Parent: parent,
+			Kind:   components.ResourceTypeService,
+		}
+	}
+	return components.Resource{
+		Path:   cmd,
+		Parent: parent,
+		Kind:   components.ResourceTypeScript,
+	}
 }

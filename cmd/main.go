@@ -127,7 +127,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
+					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
 					if err != nil {
 						return err
 					}
@@ -202,7 +202,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
+					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
 					if err != nil {
 						return err
 					}

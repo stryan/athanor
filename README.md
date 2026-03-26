@@ -13,6 +13,8 @@ Requires Go 1.26. Build using `mise build` to produce amd64 and arm64 binaries i
 
 ## Running
 
+Athanor relies on the volume import/export API added to the REST API in Podman v5.6. Lower Podman versions may work when run bare-metal.
+
 Athanor follows the same conventions as Materia:
 
 - For root users it will look in `/etc/containers/systemd/` and `/var/lib/materia/components/` for components.

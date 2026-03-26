@@ -45,6 +45,7 @@ func GetDefaultConfig() (*Config, error) {
 		QuadletDir: quadletPath,
 		OutputDir:  outputPath,
 		DataDir:    dataPath,
+		HostMode:   false,
 	}, nil
 }
 
@@ -54,7 +55,7 @@ type Config struct {
 	DataDir            string `toml:"data_dir" koanf:"data_dir"`
 	CompressionCommand string `toml:"compression_command" koanf:"compression_command"`
 	CompressionSuffix  string `toml:"compression_suffix" koanf:"compression_suffix"`
-	HostMode           bool   // TODO
+	HostMode           bool   `toml:"host_mode" koanf:"host_mode"`
 	PostCommand        string `toml:"post_command" koanf:"post_command"`
 	Notify             bool   `toml:"notify" koanf:"notify"`
 	Webhook            string `toml:"webhook" koanf:"webhook"`

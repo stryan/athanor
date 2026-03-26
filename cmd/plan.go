@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 
@@ -12,7 +13,7 @@ import (
 )
 
 type BackupPlan struct {
-	Components map[string]*plan.Plan
+	Components map[string]*plan.Plan `json:"components"`
 }
 
 func NewBackupPlan() *BackupPlan {
@@ -30,7 +31,11 @@ func (bp *BackupPlan) Keys() []string {
 	return keys
 }
 
-func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*BackupPlan, error) {
+func (bp *BackupPlan) ToJson() ([]byte, error) {
+	return json.Marshal(bp)
+}
+
+func buildPlan(ctx context.Context, cfg *athanor.Config, compMgr *athanor.Reader, conman containers.ContainerManager, serv services.ServiceManager, name, group string) (*BackupPlan, error) {
 	compNames, err := compMgr.ListComponentNames()
 	if err != nil {
 		return nil, err
@@ -59,6 +64,21 @@ func buildPlan(ctx context.Context, compMgr *athanor.Reader, conman containers.C
 		}
 		fullPlan.Components[cname] = p
 	}
+	if cfg.HostMode {
+		p := plan.NewPlan()
+		c, err := athanor.NewHostComponent(cfg.QuadletDir)
+		if err != nil {
+			return nil, err
+		}
+		steps, err := athanor.PlanHostBackup(ctx, conman, serv, c, group)
+		if err != nil {
+			return nil, err
+		}
+		if err = p.Append(steps); err != nil {
+			return nil, err
+		}
+		fullPlan.Components["host"] = p
+	}
 
 	return fullPlan, nil
 }
@@ -68,28 +88,15 @@ func printBackupPlan(bp *BackupPlan, format string) error {
 		fmt.Println("no changes made")
 		return nil
 	}
-	for _, c := range bp.Keys() {
-		p := bp.Components[c]
-		err := printPlan(p, format)
-		if err != nil {
-			return err
-		}
-
-	}
-
-	return nil
-}
-
-func printPlan(p *plan.Plan, format string) error {
-	if p.Empty() {
-		fmt.Println("No changes made")
-		return nil
-	}
 	switch format {
 	case "text":
-		fmt.Println(p.Pretty())
+		for _, c := range bp.Keys() {
+			p := bp.Components[c]
+			fmt.Printf("%v Plan:\n", c)
+			fmt.Printf("%v\n", p.Pretty())
+		}
 	case "json":
-		jsonPlan, err := p.ToJson()
+		jsonPlan, err := bp.ToJson()
 		if err != nil {
 			return fmt.Errorf("error converting to json: %w", err)
 		}
@@ -97,5 +104,6 @@ func printPlan(p *plan.Plan, format string) error {
 	default:
 		return fmt.Errorf("unsupported output format: %q", format)
 	}
+
 	return nil
 }

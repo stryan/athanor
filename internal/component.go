@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/BurntSushi/toml"
 	"github.com/containers/podman/v5/pkg/systemd/parser"
 	"primamateria.systems/materia/pkg/actions"
 	"primamateria.systems/materia/pkg/components"
@@ -24,11 +23,11 @@ func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *c
 	if err != nil {
 		return steps, err
 	}
-	overrides, err := parseManifest(ctx, c)
+	backupManifest, err := parseManifest(ctx, c)
 	if err != nil {
 		return steps, err
 	}
-	for key, o := range overrides.Volumes {
+	for key, o := range backupManifest.Volumes {
 		res, err := c.Resources.Get(fmt.Sprintf("%v.volume", key))
 		if err != nil {
 			return steps, err
@@ -50,6 +49,19 @@ func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *c
 	steps, err = processConfigs(ctx, c, serv, cfgs)
 	if err != nil {
 		return steps, err
+	}
+	if backupManifest.PostCommand != "" {
+		res := ParsePostCommand(c.Name, backupManifest.PostCommand)
+		act := actions.Action{
+			Todo:     actions.ActionStart,
+			Parent:   c,
+			Target:   res,
+			Priority: 5,
+		}
+		if res.Kind == components.ResourceTypeScript {
+			act.Todo = actions.ActionExecute
+		}
+		steps = append(steps, act)
 	}
 	return steps, nil
 }
@@ -112,12 +124,7 @@ func parseManifest(ctx context.Context, c *components.Component) (*ComponentBack
 	if err != nil {
 		return nil, err
 	}
-	var maniCfg ComponentBackupConfig
-	err = toml.Unmarshal([]byte(manifestResource.Content), &maniCfg)
-	if err != nil {
-		return nil, err
-	}
-	return &maniCfg, nil
+	return ParseManifest(manifestResource)
 }
 
 func processConfigs(ctx context.Context, c *components.Component, serv services.ServiceManager, configs map[components.Resource]*QuadletBackupConfig) ([]actions.Action, error) {
