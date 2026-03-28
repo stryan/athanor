@@ -31,21 +31,11 @@ type BackupReport struct {
 
 func (r *BackupReport) Report() (string, error) {
 	var result strings.Builder
-	_, err := fmt.Fprintf(&result, "Backup Report for %v\nStart: %v\nEnd: %v\n", r.Hostname, r.StartTime.Format(time.RFC822), r.EndTime.Format(time.RFC822))
+	_, err := fmt.Fprintf(&result, "Backup Report for %v\nStart: %v\nEnd: %v", r.Hostname, r.StartTime.Format(time.RFC822), r.EndTime.Format(time.RFC822))
 	if err != nil {
 		return "", err
 	}
-	_, err = result.WriteString("Successs: ")
-	if err != nil {
-		return "", err
-	}
-	for _, c := range r.Successes {
-		_, err := result.WriteString(c.Name)
-		if err != nil {
-			return "", err
-		}
-	}
-	_, err = result.WriteString("Skipped: ")
+	_, err = result.WriteString("\nSuccesses: ")
 	if err != nil {
 		return "", err
 	}
@@ -55,7 +45,17 @@ func (r *BackupReport) Report() (string, error) {
 			return "", err
 		}
 	}
-	_, err = result.WriteString("Failures: ")
+	_, err = result.WriteString("\nSkipped: ")
+	if err != nil {
+		return "", err
+	}
+	for _, c := range r.Skipped {
+		_, err := result.WriteString(c.Name + " ")
+		if err != nil {
+			return "", err
+		}
+	}
+	_, err = result.WriteString("\nFailures: ")
 	if err != nil {
 		return "", err
 	}
