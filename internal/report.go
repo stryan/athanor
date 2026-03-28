@@ -76,6 +76,7 @@ func (r *BackupReport) AddReport(c string, p *plan.Plan, err error) {
 	}
 	if p == nil || p.Size() == 0 {
 		r.Skipped = append(r.Skipped, ComponentReport{Name: c})
+		return
 	}
 	r.Successes = append(r.Successes, ComponentReport{Name: c})
 }
