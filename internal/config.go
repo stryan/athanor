@@ -50,15 +50,14 @@ func GetDefaultConfig() (*Config, error) {
 }
 
 type Config struct {
-	QuadletDir         string `toml:"quadlet_dir" koanf:"quadlet_dir"`
-	OutputDir          string `toml:"output_dir" koanf:"output_dir"`
-	DataDir            string `toml:"data_dir" koanf:"data_dir"`
-	CompressionCommand string `toml:"compression_command" koanf:"compression_command"`
-	CompressionSuffix  string `toml:"compression_suffix" koanf:"compression_suffix"`
-	HostMode           bool   `toml:"host_mode" koanf:"host_mode"`
-	PostCommand        string `toml:"post_command" koanf:"post_command"`
-	Notify             bool   `toml:"notify" koanf:"notify"`
-	Webhook            string `toml:"webhook" koanf:"webhook"`
+	QuadletDir  string `toml:"quadlet_dir" koanf:"quadlet_dir"`
+	OutputDir   string `toml:"output_dir" koanf:"output_dir"`
+	DataDir     string `toml:"data_dir" koanf:"data_dir"`
+	Compression string `toml:"compression" koanf:"compression"`
+	HostMode    bool   `toml:"host_mode" koanf:"host_mode"`
+	PostCommand string `toml:"post_command" koanf:"post_command"`
+	Notify      bool   `toml:"notify" koanf:"notify"`
+	Webhook     string `toml:"webhook" koanf:"webhook"`
 }
 
 func NewConfig(filename string) (*Config, error) {
@@ -88,27 +87,14 @@ func NewConfig(filename string) (*Config, error) {
 	if err = k.Unmarshal("", &c); err != nil {
 		return nil, err
 	}
-	if c.CompressionSuffix == "" {
-		switch c.CompressionCommand {
-		case "zstd":
-			c.CompressionSuffix = "zstd"
-		case "gzip":
-			c.CompressionSuffix = "gz"
-		case "zip":
-			c.CompressionSuffix = "zip"
-		default:
-			c.CompressionSuffix = "compressed"
-		}
-	}
 
 	return &c, nil
 }
 
 func (c *Config) String() string {
 	result := fmt.Sprintf("Config:\nQuadlet Dir: %v\nData Dir: %v\nOutput Dir: %v", c.QuadletDir, c.DataDir, c.OutputDir)
-	if c.CompressionCommand != "" {
-		result += fmt.Sprintf("\nCompression Command: %v\n", c.CompressionCommand)
-		result += fmt.Sprintf("Compression Suffix: %v", c.CompressionSuffix)
+	if c.Compression != "" {
+		result += fmt.Sprintf("\nCompression Enabled: %v\n", c.Compression)
 	} else {
 		result += "\nCompression Disabled"
 	}
