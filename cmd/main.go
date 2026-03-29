@@ -311,10 +311,10 @@ func main() {
 					for _, v := range targetComponent.Resources.List() {
 						if v.Kind == components.ResourceTypeVolume {
 							config, err := athanor.ParseUnit(v)
-							if err != nil {
+							if err != nil && !errors.Is(err, athanor.ErrNoConfig) {
 								return err
 							}
-							if config.Skip {
+							if !errors.Is(err, athanor.ErrNoConfig) && config.Skip {
 								continue
 							}
 							needNames = append(needNames, v.Name())
@@ -405,7 +405,20 @@ func main() {
 							Todo:     actions.ActionStop,
 							Parent:   targetComponent,
 							Target:   k,
-							Priority: 3,
+							Priority: 4,
+						})
+						if err != nil {
+							return err
+						}
+					}
+
+					// ensure volumes
+					for vol := range volmap {
+						err = plan.Add(actions.Action{
+							Todo:     actions.ActionEnsure,
+							Parent:   targetComponent,
+							Target:   vol,
+							Priority: 2,
 						})
 						if err != nil {
 							return err
@@ -418,7 +431,7 @@ func main() {
 							Todo:     actions.ActionImport,
 							Parent:   targetComponent,
 							Target:   vol,
-							Priority: 2,
+							Priority: 3,
 							Metadata: &actions.ActionMetadata{
 								VolumeName: &src,
 							},
