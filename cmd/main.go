@@ -310,6 +310,13 @@ func main() {
 					needNames := []string{}
 					for _, v := range targetComponent.Resources.List() {
 						if v.Kind == components.ResourceTypeVolume {
+							config, err := athanor.ParseUnit(v)
+							if err != nil {
+								return err
+							}
+							if config.Skip {
+								continue
+							}
 							needNames = append(needNames, v.Name())
 							volmap[v] = ""
 						}
