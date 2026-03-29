@@ -5,19 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime/debug"
-	"strings"
 	"time"
 
 	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"github.com/charmbracelet/log"
 	"github.com/urfave/cli/v3"
-	"primamateria.systems/materia/pkg/actions"
-	"primamateria.systems/materia/pkg/components"
 	"primamateria.systems/materia/pkg/containers"
 	"primamateria.systems/materia/pkg/executor"
-	"primamateria.systems/materia/pkg/plan"
 	"primamateria.systems/materia/pkg/services"
 )
 
@@ -197,7 +192,7 @@ func main() {
 						return err
 					}
 					shouldNotify := cfg.Notify
-					if cmd.HasName("notify") {
+					if cmd.IsSet("notify") {
 						shouldNotify = cmd.Bool("notify")
 					}
 					serv, err := services.NewServices(ctx, &services.ServicesConfig{})
@@ -272,13 +267,13 @@ func main() {
 						Usage:   "Source directory to restore from. Defaults to .",
 						Sources: cli.ValueSourceChain{},
 						Value:   ".",
-						Aliases: []string{"-s"},
+						Aliases: []string{"s"},
 					},
 					&cli.BoolFlag{
 						Name:    "plan",
 						Usage:   "Only plan the restore, don't run it",
 						Value:   false,
-						Aliases: []string{"-p", "-d"},
+						Aliases: []string{"p", "d"},
 					},
 				},
 				Action: func(ctx context.Context, c *cli.Command) error {
@@ -301,150 +296,16 @@ func main() {
 					if err != nil {
 						return err
 					}
-
 					targetComponent, err := athanor.LoadComponent(ctx, conman, compMgr, target)
 					if err != nil {
 						return err
 					}
-					volmap := make(map[components.Resource]string)
-					needNames := []string{}
-					for _, v := range targetComponent.Resources.List() {
-						if v.Kind == components.ResourceTypeVolume {
-							config, err := athanor.ParseUnit(v)
-							if err != nil && !errors.Is(err, athanor.ErrNoConfig) {
-								return err
-							}
-							if !errors.Is(err, athanor.ErrNoConfig) && config.Skip {
-								continue
-							}
-							needNames = append(needNames, v.Name())
-							volmap[v] = ""
-						}
-					}
-					volkeys := make([]components.Resource, 0, len(volmap))
-					for r := range volmap {
-						volkeys = append(volkeys, r)
-					}
-
-					log.Info("verifying volumes", "needed", needNames)
-
-					sourceEntries, err := os.ReadDir(source)
+					restorePlan, err := buildRestorePlan(ctx, targetComponent, source, serv)
 					if err != nil {
-						return err
+						return fmt.Errorf("unable to build restore plan: %w", err)
 					}
-					for _, e := range sourceEntries {
-						for _, sv := range volkeys {
-							svname := strings.TrimSuffix(sv.Name(), ".volume")
-							if strings.Contains(e.Name(), svname) {
-								if volmap[sv] != "" {
-									return fmt.Errorf("multiple source canidates for volume %v: current: %v new %v", sv.Name(), volmap[sv], e.Name())
-								}
-								log.Info("found source volume", "canidate", e.Name(), "target", sv.Name())
-								volmap[sv] = filepath.Join(source, e.Name())
-								break
-							}
-						}
-					}
-					missingVolumes := make([]string, 0, len(needNames))
-					for _, k := range volkeys {
-						if volmap[k] == "" {
-							missingVolumes = append(missingVolumes, k.Name())
-						}
-					}
-					if len(missingVolumes) > 0 {
-						return fmt.Errorf("missing source volumes: %v", missingVolumes)
-					}
-					plan := plan.NewPlan()
-					// stop services
-					needToStop := make(map[components.Resource]struct{})
-					for _, src := range targetComponent.Services.List() {
-						liveService, err := serv.GetService(ctx, src.Service)
-						if err != nil {
-							return err
-						}
-						if liveService.State == "active" || liveService.State == "activating" {
-							srcRes, err := targetComponent.Resources.Get(src.Service)
-							if errors.Is(err, components.ErrResourceNotFound) {
-								srcRes = components.Resource{
-									Path:   src.Service,
-									Parent: targetComponent.Name,
-									Kind:   components.ResourceTypeService,
-								}
-							} else if err != nil {
-								return err
-							}
-							needToStop[srcRes] = struct{}{}
-						}
-					}
-					for _, quadlet := range targetComponent.Resources.List() {
-						if quadlet.Kind == components.ResourceTypeContainer || quadlet.Kind == components.ResourceTypePod {
-							liveService, err := serv.GetService(ctx, quadlet.Service())
-							if err != nil {
-								return err
-							}
-							if liveService.State == "active" || liveService.State == "activating" {
-								needToStop[quadlet] = struct{}{}
-							}
-						}
-					}
-					ntsKeys := make([]components.Resource, 0, len(needToStop))
-					for r := range needToStop {
-						ntsKeys = append(ntsKeys, r)
-					}
-					for _, k := range ntsKeys {
-						err = plan.Add(actions.Action{
-							Todo:     actions.ActionStop,
-							Parent:   targetComponent,
-							Target:   k,
-							Priority: 1,
-						})
-						if err != nil {
-							return err
-						}
-						err = plan.Add(actions.Action{
-							Todo:     actions.ActionStop,
-							Parent:   targetComponent,
-							Target:   k,
-							Priority: 4,
-						})
-						if err != nil {
-							return err
-						}
-					}
-
-					// ensure volumes
-					for vol := range volmap {
-						err = plan.Add(actions.Action{
-							Todo:     actions.ActionEnsure,
-							Parent:   targetComponent,
-							Target:   vol,
-							Priority: 2,
-						})
-						if err != nil {
-							return err
-						}
-					}
-
-					// import volumes
-					for vol, src := range volmap {
-						importAction := actions.Action{
-							Todo:     actions.ActionImport,
-							Parent:   targetComponent,
-							Target:   vol,
-							Priority: 3,
-							Metadata: &actions.ActionMetadata{
-								VolumeName: &src,
-							},
-						}
-
-						err = plan.Add(importAction)
-						if err != nil {
-							return err
-						}
-					}
-
 					if c.Bool("plan") {
-						fmt.Println(plan.Pretty())
+						fmt.Println(restorePlan.Pretty())
 						return nil
 					}
 
@@ -459,7 +320,7 @@ func main() {
 						OutputDir:  cfg.OutputDir,
 					}, writer, 90)
 					log.Info("restoring", "component", targetComponent.Name)
-					steps, err := doit.Execute(ctx, plan)
+					steps, err := doit.Execute(ctx, restorePlan)
 					if err != nil {
 						return err
 					}
@@ -501,7 +362,7 @@ func main() {
 						return errors.New("need notification type")
 					}
 					dest := cfg.Webhook
-					if dest == "" {
+					if c.IsSet("webhook") {
 						dest = c.String("webhook")
 					}
 					hostname, err := os.Hostname()
