@@ -436,7 +436,6 @@ func main() {
 								VolumeName: &src,
 							},
 						}
-						fmt.Fprintf(os.Stderr, "FBLTHP[631]: main.go:422: importAction=%+v\n", *importAction.Metadata.VolumeName)
 
 						err = plan.Add(importAction)
 						if err != nil {
