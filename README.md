@@ -61,6 +61,20 @@ Plan:
 hostname:~ #
 ~~~
 
+
+### Recovery
+You can also use `athanor` to recover data for a component.
+
+`athanor restore <componentname>`
+
+This will stop all services related to the component, import the tarballs into the volumes used by it, then start up the stopped services again.
+
+You will need to provide tarballs (potentially compressed) with the respective volume names in them i.e. volume `systemd-data` will be restored from tarball `systemd-data-volume.tar.gz`.
+
+By default athanor will look for tarballs in the current directory. You can specify a source directory with `--source`.
+
+To perform a dry run, use the `--plan` flag.
+
 ## Configuration
 
 Configuration can be provided as either a `TOML` file or with `ATHANOR_` environmental variables
