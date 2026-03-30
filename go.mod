@@ -12,7 +12,7 @@ require (
 	github.com/knadh/koanf/providers/structs v1.0.0
 	github.com/knadh/koanf/v2 v2.3.3
 	github.com/urfave/cli/v3 v3.7.0
-	primamateria.systems/materia v0.6.5-0.20260326225240-d9eb08440534
+	primamateria.systems/materia v0.6.5-0.20260329194843-6e595b995511
 )
 
 require (

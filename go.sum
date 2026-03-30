@@ -203,3 +203,5 @@ gotest.tools/v3 v3.5.2 h1:7koQfIKdy+I8UTetycgUqXWSDwpgv193Ka+qRsmBY8Q=
 gotest.tools/v3 v3.5.2/go.mod h1:LtdLGcnqToBH83WByAAi/wiwSFCArdFIUV/xxN4pcjA=
 primamateria.systems/materia v0.6.5-0.20260326225240-d9eb08440534 h1:VjHXqYDZwHDp8SLb1V9MCuHn7WYCHp4bC68ybfQEbWw=
 primamateria.systems/materia v0.6.5-0.20260326225240-d9eb08440534/go.mod h1:ZkMS7qWl+SAtRBKyGkDHM/gX/I6riAWzBGCnXxT5nGc=
+primamateria.systems/materia v0.6.5-0.20260329194843-6e595b995511 h1:4o/uhTZ3ZBolzSeYR/yhIQoGqrzhhZ4TQXmewvsxz1c=
+primamateria.systems/materia v0.6.5-0.20260329194843-6e595b995511/go.mod h1:U6b4S1dP5nR/QjHWW469WEI68pZWnW2P2mU0CYLYqRY=
