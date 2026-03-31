@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"os"
 	"runtime/debug"
 	"time"
@@ -66,7 +67,10 @@ func main() {
 			if err != nil {
 				return ctx, fmt.Errorf("can not construct config: %w", err)
 			}
-			return ctx, validateConfig(cfg)
+			if err := validateConfig(cfg); err != nil {
+				return nil, fmt.Errorf("invalid configuration: %w", err)
+			}
+			return ctx, bootstrap(cfg)
 		},
 		Commands: []*cli.Command{
 			{
@@ -403,8 +407,16 @@ func validateConfig(cfg *athanor.Config) error {
 	if _, err := os.Stat(cfg.DataDir); err != nil {
 		return fmt.Errorf("could not verify data directory: %w", err)
 	}
-	if _, err := os.Stat(cfg.OutputDir); err != nil {
-		return fmt.Errorf("could not verify output directory: %w", err)
+
+	return nil
+}
+
+func bootstrap(cfg *athanor.Config) error {
+	if _, err := os.Stat(cfg.OutputDir); errors.Is(err, fs.ErrNotExist) {
+		err := os.Mkdir(cfg.OutputDir, 0o755)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
