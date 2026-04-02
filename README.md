@@ -62,6 +62,16 @@ hostname:~ #
 ~~~
 
 
+#### Skipped Volume types
+Athanor will only backup local volumes that currently exist on the host. If the volume fits one of the following cases it will not be backed up:
+
+1. Volume `type` is `nfs`
+2. Volume `driver` is not `local`
+3. Volume quadlet exists but the volume itself has not been created yet
+
+1 and 2 will generate warnings in the logs to indicate you should probably add a `Skip` config.
+
+
 ### Recovery
 You can also use `athanor` to recover data for a component.
 

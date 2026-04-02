@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/log"
 	"github.com/containers/podman/v5/pkg/systemd/parser"
 	"primamateria.systems/materia/pkg/actions"
 	"primamateria.systems/materia/pkg/components"
@@ -17,7 +18,7 @@ import (
 
 var athanorGroup = "X-Athanor"
 
-func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *components.Component, group string) ([]actions.Action, error) {
+func PlanComponentBackup(ctx context.Context, conman containers.ContainerManager, serv services.ServiceManager, c *components.Component, group string) ([]actions.Action, error) {
 	steps := make([]actions.Action, 0)
 	cfgs, err := parseQuadlets(ctx, c)
 	if err != nil {
@@ -46,7 +47,7 @@ func PlanComponentBackup(ctx context.Context, serv services.ServiceManager, c *c
 		}
 	}
 
-	steps, err = processConfigs(ctx, c, serv, cfgs)
+	steps, err = processConfigs(ctx, c, conman, serv, cfgs)
 	if err != nil {
 		return steps, err
 	}
@@ -127,8 +128,9 @@ func parseManifest(ctx context.Context, c *components.Component) (*ComponentBack
 	return ParseManifest(manifestResource)
 }
 
-func processConfigs(ctx context.Context, c *components.Component, serv services.ServiceManager, configs map[components.Resource]*QuadletBackupConfig) ([]actions.Action, error) {
+func processConfigs(ctx context.Context, c *components.Component, conman containers.ContainerManager, serv services.ServiceManager, configs map[components.Resource]*QuadletBackupConfig) ([]actions.Action, error) {
 	var steps []actions.Action
+	var volumes []string
 	for res, cfg := range configs {
 		if cfg.Skip {
 			continue
@@ -200,6 +202,33 @@ func processConfigs(ctx context.Context, c *components.Component, serv services.
 			}
 
 		case components.ResourceTypeVolume:
+			volType, err := res.QueryQuadletData("Type")
+			if !errors.Is(err, components.ErrQuadletNoGroup) { // a volume quadlet with no content is valid
+				if err != nil && !errors.Is(err, components.ErrQuadletNoKey) {
+					return steps, fmt.Errorf("unable to query quadlet %v data: %w", res.Name(), err)
+				}
+				if !errors.Is(err, components.ErrQuadletNoKey) && volType[0] == "nfs" {
+					log.Warnf("skipping backup of NFS volume %v", res.Name())
+					continue
+				}
+				volDriver, err := res.QueryQuadletData("Driver")
+				if err != nil && !errors.Is(err, components.ErrQuadletNoKey) {
+					return steps, fmt.Errorf("unable to query quadlet %v data: %w", res.Name(), err)
+				}
+				if !errors.Is(err, components.ErrQuadletNoKey) && volDriver[0] != "local" {
+					log.Warnf("skipping backup of non-local volume %v: %v", res.Name(), volDriver[0])
+					continue
+				}
+			}
+
+			_, err = conman.GetVolume(ctx, res.HostObject)
+			if errors.Is(err, containers.ErrPodmanObjectNotFound) {
+				log.Warn("skipping backing up non-existent volume %v", res.HostObject)
+				continue
+			}
+			if err != nil && !errors.Is(err, containers.ErrPodmanObjectNotFound) {
+				return steps, fmt.Errorf("unable to get volume %v %w", res.HostObject, err)
+			}
 			dumpCommand := actions.Action{
 				Todo:     actions.ActionDump,
 				Parent:   c,
@@ -218,9 +247,14 @@ func processConfigs(ctx context.Context, c *components.Component, serv services.
 					Priority: 3,
 				}
 			}
+			volumes = append(volumes, res.Name())
 			steps = append(steps, dumpCommand)
 
 		}
+	}
+	if len(volumes) == 0 {
+		// If we're not actually backing up anything, don't start/stop contaienrs
+		return []actions.Action{}, nil
 	}
 	return steps, nil
 }

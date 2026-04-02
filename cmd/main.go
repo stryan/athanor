@@ -90,7 +90,15 @@ func main() {
 				},
 			},
 			{
-				Name:  "plan",
+				Name: "plan",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:        "target",
+						Value:       "",
+						Destination: new(string),
+						UsageText:   "Target component to backup",
+					},
+				},
 				Usage: "Plan a backup run for one or more components. Defaults to all",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
@@ -98,11 +106,6 @@ func main() {
 						Aliases: []string{"q"},
 						Usage:   "Minimize output",
 						Value:   false,
-					},
-					&cli.StringFlag{
-						Name:    "name",
-						Aliases: []string{"n"},
-						Usage:   "Component name to backup",
 					},
 					&cli.StringFlag{
 						Name:    "format",
@@ -130,7 +133,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
+					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.StringArg("target"), cmd.String("group"))
 					if err != nil {
 						return err
 					}
@@ -147,17 +150,20 @@ func main() {
 			{
 				Name:  "backup",
 				Usage: "Backup one or more components",
+				Arguments: []cli.Argument{
+					&cli.StringArg{
+						Name:        "target",
+						Value:       "",
+						Destination: new(string),
+						UsageText:   "Target component to backup",
+					},
+				},
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
 						Name:    "quiet",
 						Aliases: []string{"q"},
 						Usage:   "Minimize output",
 						Value:   false,
-					},
-					&cli.StringFlag{
-						Name:    "name",
-						Aliases: []string{"n"},
-						Usage:   "Component name to backup",
 					},
 					&cli.StringFlag{
 						Name:    "format",
@@ -204,7 +210,7 @@ func main() {
 						return err
 					}
 
-					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.String("name"), cmd.String("group"))
+					plan, err := buildPlan(ctx, cfg, compMgr, conman, *serv, cmd.StringArg("target"), cmd.String("group"))
 					if err != nil {
 						return err
 					}

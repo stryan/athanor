@@ -57,7 +57,7 @@ func buildPlan(ctx context.Context, cfg *athanor.Config, compMgr *athanor.Reader
 		if err != nil {
 			return nil, err
 		}
-		steps, err := athanor.PlanComponentBackup(ctx, serv, c, group)
+		steps, err := athanor.PlanComponentBackup(ctx, conman, serv, c, group)
 		if err != nil {
 			return nil, err
 		}

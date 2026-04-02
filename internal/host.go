@@ -68,7 +68,7 @@ func PlanHostBackup(ctx context.Context, conman containers.ContainerManager, ser
 		}
 	}
 
-	steps, err = processConfigs(ctx, c, serv, cfgs)
+	steps, err = processConfigs(ctx, c, conman, serv, cfgs)
 	if err != nil {
 		return steps, err
 	}

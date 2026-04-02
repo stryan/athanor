@@ -13,6 +13,8 @@ require (
 	github.com/knadh/koanf/v2 v2.3.3
 	github.com/urfave/cli/v3 v3.7.0
 	primamateria.systems/materia v0.6.5-0.20260329194843-6e595b995511
+
+	github.com/emirpasic/gods v1.18.1
 )
 
 require (
@@ -34,7 +36,6 @@ require (
 	github.com/docker/cli v29.3.0+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
-	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/fatih/structs v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/go-git/gcfg v1.5.1-0.20230307220236-3a3c6141e376 // indirect
