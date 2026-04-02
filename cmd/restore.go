@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 
 	athanor "git.saintnet.tech/stryan/athanor/internal"
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"primamateria.systems/materia/pkg/actions"
 	"primamateria.systems/materia/pkg/components"
 	"primamateria.systems/materia/pkg/plan"

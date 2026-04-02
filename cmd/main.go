@@ -10,7 +10,7 @@ import (
 	"time"
 
 	athanor "git.saintnet.tech/stryan/athanor/internal"
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/urfave/cli/v3"
 	"primamateria.systems/materia/pkg/containers"
 	"primamateria.systems/materia/pkg/executor"

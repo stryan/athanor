@@ -8,7 +8,7 @@ PKGVERSION = '{{exec(command="git describe --tags --abbrev=8 --dirty --always --
 LDFLAGS = "{{ get_env(name='LDFLAGS',default='-w -s') }} -X 'main.Version={{vars.PKGVERSION}}'"
 
 [tasks.build]
-depends = ["build-amd64","build-arm64"]
+depends = ["build-amd64", "build-arm64"]
 
 
 [tasks.build-amd64]
