@@ -6,15 +6,14 @@ require (
 	github.com/BurntSushi/toml v1.6.0
 	github.com/charmbracelet/log v1.0.0
 	github.com/containers/podman/v5 v5.8.1
+	github.com/emirpasic/gods v1.18.1
 	github.com/knadh/koanf/parsers/toml v0.1.0
 	github.com/knadh/koanf/providers/env v1.1.0
 	github.com/knadh/koanf/providers/file v1.2.1
 	github.com/knadh/koanf/providers/structs v1.0.0
 	github.com/knadh/koanf/v2 v2.3.3
 	github.com/urfave/cli/v3 v3.7.0
-	primamateria.systems/materia v0.6.5-0.20260329194843-6e595b995511
-
-	github.com/emirpasic/gods v1.18.1
+	primamateria.systems/materia v0.6.5-0.20260402010946-189b194f733f
 )
 
 require (
