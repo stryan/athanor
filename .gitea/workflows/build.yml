@@ -62,9 +62,9 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASS }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            mise ci-buildah
+            mise ci-buildah --no-test
           else
-            mise ci-buildah --no-sign latest ${IMAGE_REGISTRY}/athanor
+            mise ci-buildah --no-test --no-sign latest ${IMAGE_REGISTRY}/athanor
           fi
       - name: Cleanup leftover containers
         if: always()

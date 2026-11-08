@@ -102,7 +102,7 @@ run = '''
   if [[ "${usage_clear}" == "true" ]]; then
     buildah manifest rm athanor 2>/dev/null || true # clear old manifest from buildah cache
   fi
-  buildah build --platform linux/arm64,linux/amd64 --manifest athanor -f Containerfile.ci .
+  buildah build --platform linux/arm64,linux/amd64 --manifest athanor -f Containerfile .
   buildah manifest annotate --index \
     --annotation org.opencontainers.image.description="Athanor: backups manager for Materia" \
     --annotation org.opencontainers.image.licenses="GPL-3.0-only" \

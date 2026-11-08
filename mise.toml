@@ -8,6 +8,8 @@ fnox = "latest"
 PKGVERSION = '{{exec(command="git describe --tags --abbrev=8 --dirty --always --long")}}'
 LDFLAGS = "{{ get_env(name='LDFLAGS',default='-w -s') }} -X 'main.Version={{vars.PKGVERSION}}'"
 NOCGO = "remote exclude_graphdriver_btrfs btrfs_noversion exclude_graphdriver_devicemapper containers_image_openpgp"
+releasedir = "./dist"
+release_archs = "amd64 arm64"
 
 [tasks.build]
 depends = ["build-amd64", "build-arm64"]

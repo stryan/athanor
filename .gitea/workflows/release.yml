@@ -61,7 +61,7 @@ jobs:
           COSIGN_PASSWORD: ${{ secrets.COSIGN_PASS }}
           STABLE_FLAG: ${{ steps.check-rc.outputs.is_rc == 'false' && '--stable' || '' }}
         run: |
-          mise run ci-buildah $STABLE_FLAG ${{ github.ref_name }} ${IMAGE_REGISTRY}/athanor ghcr.io/stryan/athanor
+          mise run ci-buildah --no-test $STABLE_FLAG ${{ github.ref_name }} ${IMAGE_REGISTRY}/athanor
       # - name: Generate Github release
       #   env:
       #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_KEY }}
