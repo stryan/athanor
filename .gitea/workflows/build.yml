@@ -15,50 +15,61 @@ on:
       - go.sum
   pull_request:
     branches: [master]
+  workflow_dispatch:
 env:
-  REGISTRY_USER: ${{ github.actor }}
-  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
   IMAGE_REGISTRY: ${{ vars.FORGE }}/${{ github.actor }}
   MISE_ENV: ci
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  FNOX_PROFILE: ci
+  FNOX_AGE_KEY: ${{secrets.ATHANOR_AGE_KEY}}
+  RYUK_CONTAINER_PRIVILEGED: true
+  DOCKER_HOST: unix:///var/run/podman/podman.sock
+  CONTAINER_HOST: unix:///var/run/podman/podman.sock
+  BUILDAH_ISOLATION: chroot
 jobs:
-  # Build job
   build:
-    runs-on: ubuntu-latest
+    runs-on: materia
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          # version: "latest"  # [default: latest] mise version to install
-          install: true  # [default: true] run `mise install`
-          cache: true  # [default: true] cache mise using GitHub's cache
-          experimental: true  # [default: false] enable experimental features
-          github_token: ${{ secrets.GH_TOKEN }}
-      - name: Setup qemu
-        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git init .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" \
+            fetch --tags origin "${GITHUB_REF}"
+          git checkout --detach FETCH_HEAD
+          git update-ref "${GITHUB_REF}" HEAD
+      - name: Setup mise
+        run: |
+          mise trust
+          mise install
+      - name: Run unit tests
+        run: mise run test
+      - name: Build binaries
+        run: mise run build
+      - name: Run integration tests
+        run: mise run integration -k
       - name: Login to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ vars.FORGE }}
-          username: ${{ gitea.actor }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
+        run: mise x -- fnox get REGISTRY_TOKEN | podman login "${{ vars.FORGE }}"
+          -u "$(mise x -- fnox get REGISTRY_USER)" --password-stdin
       # - name: Login to ghcr registry
-      #   uses: docker/login-action@v3
-      #   with:
-      #     registry: ghcr.io
-      #     username: ${{ github.actor }}
-      #     password: ${{ secrets.GH_TOKEN }}
-      - name: Build container
+      #   run: mise x -- fnox get GH_TOKEN | podman login ghcr.io -u "$(mise x -- fnox
+      #     get GH_USER)" --password-stdin
+      - name: Copy Registry auths for cosign
+        run: mkdir -p ~/.docker && cat /run/containers/0/auth.json > ~/.docker/config.json
+      - name: Build container image
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASS }}
         run: |
           if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "TAG=${{ github.event.pull_request.number }}" >> $GITHUB_ENV
-            export TAG=${{ github.event.pull_request.number }}
+            mise ci-buildah
           else
-            export TAG=latest
+            mise ci-buildah --no-sign latest ${IMAGE_REGISTRY}/athanor
           fi
-          mise ci $IMAGE_REGISTRY $TAG
+      - name: Cleanup leftover containers
+        if: always()
+        run: mise run clean-test-containers
       - name: Logout registry
-        run: docker logout $IMAGE_REGISTRY
+        run: podman logout "$IMAGE_REGISTRY"
       # - name: Logout registry
-      #   run: docker logout ghcr.io
+      #   run: podman logout ghcr.io

@@ -1,0 +1,131 @@
+[tools]
+fnox = "latest"
+pandoc = "latest"
+"github:git-pkgs/forge" = "latest"
+
+[tasks.ci-release-gh]
+depends = [ { task = "release-tar", args = ["{{usage.tag}}"]}]
+tools.gh = "latest"
+description = "Generate a release using gh"
+usage = '''
+	arg "<tag>" help = "Tag to generate release for"
+	flag "-h --host <host>" help = "Host for gh (e.g. github.com)"
+	flag "-r --repo <repo>" help = "Repo for gh (owner/repo)"
+	flag "--no-sign" help = "Skip cosign signing"
+	flag "--prerelease" help="Set pre-release status"
+'''
+run = '''
+	#!/usr/bin/env bash
+	set -euo pipefail
+
+	gh_args=()
+	if [ -n "${usage_repo:-}" ]; then
+		repo="$usage_repo"
+		if [ -n "${usage_host:-}" ]; then
+			repo="${usage_host}/${repo}"
+		fi
+		gh_args+=("-R" "$repo")
+	fi
+
+	{% if not usage.no_sign %}
+	mise r release-sign-tar
+	{% endif %}
+
+	release_args=(--verify-tag --draft --title "${usage_tag?}" --notes-file CHANGELOG.md)
+	{% if usage.prerelease %}
+	release_args+=(--prerelease)
+	{% endif %}
+
+	gh release create "${usage_tag?}" \
+		{{vars.releasedir}}/* \
+		"${release_args[@]}" \
+		${gh_args[@]+"${gh_args[@]}"}
+'''
+
+[tasks.ci-release-forge]
+depends = [ { task = "release-tar", args = ["{{usage.tag}}"]}]
+description = "Generate a release"
+usage = '''
+	arg "<tag>" help = "Tag to generate release for"
+	flag "-h --host <host>" help = "Host for forge"
+	flag "-r --repo <repo>" help = "Repo for forge."
+	flag "--no-sign" help = "Skip cosign signing"
+	flag "--prerelease" help="Set pre-release status"
+'''
+run = '''
+	#!/usr/bin/env bash
+	set -euo pipefail
+	f() {
+		local args=()
+		if [ -n "${usage_host:-}" ]; then
+			args+=("--host" "$usage_host")
+		fi
+		if [ -n "${usage_repo:-}" ]; then
+			args+=("--repo" "$usage_repo")
+		fi
+		./forge "${args[@]}" "$@"
+	}
+
+	{% if not usage.no_sign %}
+	mise r release-sign-tar
+	{% endif %}
+
+	# create the release un-drafted so we can upload assets to it
+	# fix if/when forge supports uploading to drafted github releases
+	f release create --tag ${usage_tag?} --body "$(cat CHANGELOG.md)"
+	for file in {{vars.releasedir}}/*; do
+		echo "$file"
+		f release upload ${usage_tag?} "$file"
+	done
+	# set it to draft status
+	f release edit --tag ${usage_tag?} --draft
+	{% if usage.prerelease %}
+	f release edit --tag ${usage_tag?} --prerelease
+	{% endif %}
+'''
+
+[tasks.ci-buildah]
+depends = ["build-amd64", "build-arm64"]
+usage = '''
+  arg "[tag]" help = "Tag to push, omit to build only without pushing"
+  arg "[repos]" help = "Repositorys to push to" var=#true
+  flag "-s --stable" help="Make this release a stable release" default=#false
+  flag "-t --test" negate="--no-test" help="Test if the image can be run with buildah run" default=#true
+  flag "-c --clear" negate="--no-clear" help="Clear buildah cache of previous athanor manifests" default=#true
+  flag "--no-sign" help = "Skip cosign signing"
+'''
+run = '''
+  #!/usr/bin/env bash
+  set -euo pipefail
+  tmpdir=$(mktemp -d); ctr=""
+  trap 'rm -rf "$tmpdir"; [ -z "$ctr" ] || buildah rm "$ctr" >/dev/null 2>&1 || true' EXIT # trap to cleanup on sigint
+  if [[ "${usage_clear}" == "true" ]]; then
+    buildah manifest rm athanor 2>/dev/null || true # clear old manifest from buildah cache
+  fi
+  buildah build --platform linux/arm64,linux/amd64 --manifest athanor -f Containerfile.ci .
+  buildah manifest annotate --index \
+    --annotation org.opencontainers.image.description="Athanor: backups manager for Materia" \
+    --annotation org.opencontainers.image.licenses="GPL-3.0-only" \
+    athanor
+  if [[ "${usage_test}" == "true" ]]; then
+    host_arch="$(go env GOARCH)"
+    ctr="$(buildah from --pull=never --arch "$host_arch" localhost/athanor:latest)" # grab the image for the runner arch from the manifest
+    buildah run "$ctr" -- /app/athanor version
+    buildah run "$ctr" -- /app/athanor --help
+  fi
+  if [ -n "${usage_tag:-}" ]; then
+    if [ -z "${usage_repos:-}" ]; then
+      echo "a tag was given but no repos to push to" >&2
+      exit 1
+    fi
+    for repo in ${usage_repos}; do
+      buildah manifest push --all --digestfile "$tmpdir"/image.digest athanor docker://${repo}:"$usage_tag"
+      if [[ "${usage_stable}" == "true" ]]; then
+        buildah manifest push --all athanor docker://${repo}:stable
+      fi
+      if [ "${usage_no_sign:-false}" != "true" ]; then
+        mise r release-sign-image "$tmpdir"/image.digest $repo
+      fi
+    done
+  fi
+'''

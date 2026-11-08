@@ -2,6 +2,7 @@
 go = "latest"
 golangci-lint = "latest"
 gotestsum = "latest"
+fnox = "latest"
 
 [vars]
 PKGVERSION = '{{exec(command="git describe --tags --abbrev=8 --dirty --always --long")}}'
@@ -53,32 +54,56 @@ run = "gotestsum ./..."
 depends = ["build"]
 run = "cp ./bin/athanor-amd64 ~/.local/bin/"
 
-[tasks.ci]
-env = { CGO_ENABLE = 0 }
-depends = ["build", "check"]
+[tasks.release-tar]
+description = "generate release tarballs"
+depends = ["build", "docs"]
 usage = '''
-arg <registry> help="Registry to push to"
-arg <tag> help="Container tag to use"
+  arg "[version]" help="Manually specify version being released"
 '''
-run = "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 --push -t {{usage.registry}}/athanor:{{usage.tag}} ."
+run = '''
+  #!/usr/bin/env bash
+  set -euo pipefail
+  VERSION=${usage_version:-$(git describe --exact-match --tags --match 'v[0-9]*' HEAD 2>/dev/null || git rev-parse --abbrev-ref HEAD)}
+  epoch=$(git log -1 --format=%ct HEAD)
+  rm -rf {{vars.releasedir}} && mkdir -p {{vars.releasedir}}
+  for arch in {{vars.release_archs}}; do
+    tmpdir=$(mktemp -d)
+    chmod 755 "$tmpdir"
+    mkdir -p "$tmpdir"/bin "$tmpdir"/man/man1 "$tmpdir"/man/man5
+    cp ./README.md "$tmpdir"/
+    cp ./LICENSE "$tmpdir"/
+    cp bin/athanor-$arch "$tmpdir"/bin/athanor
+    tar --sort=name --mtime="@$epoch" --owner=0 --group=0 --numeric-owner \
+      -cf - -C "$tmpdir" . | gzip -n > "{{vars.releasedir}}/athanor-$VERSION-$arch.tar.gz"
+    rm -rf "$tmpdir"
+  done
+  git archive --format=tar.gz -o {{vars.releasedir}}/athanor-$VERSION-src.tar.gz --prefix="athanor-${VERSION#v}/" $VERSION
+'''
 
-[tasks.ci-release]
-env = { CGO_ENABLE = 0 }
-tools.gh = "latest"
-depends = ["build", "check"]
-usage = '''
-arg <registry> help="Registry to push to"
-arg <tag> help="Container tag to use"
+[tasks.release-sign-tar]
+tools.cosign = "latest"
+description = "SHA checksums and cosign the release tarballs"
+dir = "{{vars.releasedir}}"
+run = '''
+	#!/usr/bin/env bash
+	set -euo pipefail
+	sha256sum $(ls | grep -v -e '^SHA256SUMS' -e '\.asc$' -e '\.bundle$') > SHA256SUMS
+	cosign sign-blob --yes --key env://COSIGN_PRIVATE_KEY --bundle SHA256SUMS.cosign.bundle SHA256SUMS
 '''
-run = [
-  "git remote add mirror git@github.com:stryan/athanor",
-  "docker buildx build -f Containerfile --platform linux/arm64,linux/amd64 -t {{usage.registry}}/athanor:{{usage.tag}} -t {{usage.registry}}/athanor:stable -t ghcr.io/stryan/athanor:{{usage.tag}} -t ghcr.io/stryan/athanor:stable --push .",
-  "gh release create {{usage.tag}} -d -F CHANGELOG.md --generate-notes ./bin/athanor*",
-  "git remote rm mirror",
-]
 
-[tasks.container]
+[tasks.release-sign-image]
+tools.cosign = "latest"
+description = "Cosign image from digest file"
 usage = '''
-arg <tag> help="Container tag to use" default="latest"
+  arg "<digestfile>" help="Digest file path"
+  arg "<repo>" help="Repo to sign at"
 '''
-run = "podman build -f Containerfile.ci --platform=linux/amd64 -t primamateria.systems/athanor:{{usage.tag}} ."
+run = '''
+	#!/usr/bin/env bash
+	set -euo pipefail
+	digest=$(<"${usage_digestfile?}")
+	cosign sign --yes --recursive --key env://COSIGN_PRIVATE_KEY "${usage_repo?}@$digest"
+	cosign verify --key cosign.pub "${usage_repo?}@$digest" >/dev/null
+'''
+
+

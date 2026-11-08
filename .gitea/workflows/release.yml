@@ -4,43 +4,76 @@ on:
   push:
     tags: [v*.*.*]
 env:
-  REGISTRY_USER: ${{ github.actor }}
-  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_TOKEN }}
   IMAGE_REGISTRY: ${{ vars.FORGE }}/${{ github.actor }}
   MISE_ENV: ci
-  GITHUB_REPOSITORY: stryan/athanor
-  GH_TOKEN: ${{ secrets.GH_TOKEN }}
+  FNOX_PROFILE: ci
+  FNOX_AGE_KEY: ${{secrets.ATHANOR_AGE_KEY}}
+  RYUK_CONTAINER_PRIVILEGED: true
+  DOCKER_HOST: unix:///var/run/podman/podman.sock
+  CONTAINER_HOST: unix:///var/run/podman/podman.sock
+  BUILDAH_ISOLATION: chroot
 jobs:
   # Build job
   build-and-release:
-    runs-on: ubuntu-latest
+    runs-on: materia
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
-      - uses: jdx/mise-action@v2
-        with:
-          # version: "latest"  # [default: latest] mise version to install
-          install: true  # [default: true] run `mise install`
-          cache: true  # [default: true] cache mise using GitHub's cache
-          experimental: true  # [default: false] enable experimental features
-          github_token: ${{ secrets.GH_TOKEN }}
-      - name: Setup qemu
-        run: docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
-      - name: Login to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ${{ vars.FORGE }}
-          username: ${{ github.actor }}
-          password: ${{ secrets.REGISTRY_TOKEN }}
-      - name: Login to registry
-        uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GH_TOKEN }}
-      - name: Build and run release
         run: |
-          export TAG=${{ github.ref_name }}
-          mise ci-release $(IMAGE_REGISTRY) $(TAG)
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+          git init .
+          git remote add origin "${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}.git"
+          git -c http.extraheader="AUTHORIZATION: bearer ${{ secrets.GITHUB_TOKEN }}" \
+            fetch --tags origin "${GITHUB_REF}"
+          git checkout --detach FETCH_HEAD
+          git update-ref "${GITHUB_REF}" HEAD
+      - name: Setup mise
+        run: |
+          mise trust
+          mise install
+      - name: Install Alpine/Runner deps
+        run: apk add --no-cache tar gzip
+      - name: Run unit tests
+        run: mise run test
+      - name: Build binaries
+        run: mise run build
+      - name: Run integration tests
+        run: mise run integration -k
+      - name: Login to registry
+        run: mise x -- fnox get REGISTRY_TOKEN | podman login "${{ vars.FORGE }}"
+          -u "$(mise x -- fnox get REGISTRY_USER)" --password-stdin
+      # - name: Login to ghcr registry
+      #   run: mise x -- fnox get GH_TOKEN | podman login ghcr.io -u "$(mise x -- fnox
+      #     get GH_USER)" --password-stdin
+      - name: Copy Registry auths for cosign
+        run: mkdir -p ~/.docker && cat /run/containers/0/auth.json > ~/.docker/config.json
+      - name: Check release canidate status
+        id: check-rc
+        # Sets output to 'true' if tag contains '-rc', otherwise 'false'
+        run: |
+          if [[ "${{ github.ref_name }}" == *"-rc"* ]]; then
+            echo "is_rc=true" >> $GITHUB_OUTPUT
+          else
+            echo "is_rc=false" >> $GITHUB_OUTPUT
+          fi
+      - name: Build and push container images
+        env:
+          COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_KEY }}
+          COSIGN_PASSWORD: ${{ secrets.COSIGN_PASS }}
+          STABLE_FLAG: ${{ steps.check-rc.outputs.is_rc == 'false' && '--stable' || '' }}
+        run: |
+          mise run ci-buildah $STABLE_FLAG ${{ github.ref_name }} ${IMAGE_REGISTRY}/athanor ghcr.io/stryan/athanor
+      # - name: Generate Github release
+      #   env:
+      #     COSIGN_PRIVATE_KEY: ${{ secrets.COSIGN_KEY }}
+      #     COSIGN_PASSWORD: ${{ secrets.COSIGN_PASS }}
+      #     RC_FLAG: ${{ steps.check-rc.outputs.is_rc == 'false' && '--prerelease' || '' }}
+      #   run: |
+      #     export GITHUB_TOKEN="$(mise x -- fnox get GH_TOKEN)"
+      #     mise r ci-release-gh $RC_FLAG --host github.com --repo stryan/athanor ${{ github.ref_name }}
+      - name: Cleanup leftover containers
+        if: always()
+        run: mise run clean-test-containers
       - name: Logout registry
-        run: docker logout ghcr.io
+        run: podman logout "$IMAGE_REGISTRY"
+      # - name: Logout registry
+      #   run: podman logout ghcr.io
