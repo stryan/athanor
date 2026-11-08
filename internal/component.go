@@ -144,29 +144,25 @@ func processConfigs(ctx context.Context, c *components.Component, conman contain
 			if err != nil {
 				return steps, err
 			}
+			src, err := getServiceForResource(c, res)
+			if err != nil {
+				return steps, err
+			}
 			if cfg.DumpCommand != "" {
 				if serviceState.State == "inactive" {
 					// start up an inactive container
-					waitState := "active"
-					steps = append(steps, actions.Action{
+					steps = append(steps, applySrcToAction(src, actions.Action{
 						Todo:     actions.ActionStart,
 						Parent:   c,
 						Target:   res,
 						Priority: 1,
-						Metadata: &actions.ActionMetadata{
-							ServiceUntilState: &waitState,
-						},
-					})
-					endState := "inactive"
-					steps = append(steps, actions.Action{
+					}, "active"))
+					steps = append(steps, applySrcToAction(src, actions.Action{
 						Todo:     actions.ActionStop,
 						Parent:   c,
 						Target:   res,
 						Priority: 2,
-						Metadata: &actions.ActionMetadata{
-							ServiceUntilState: &endState,
-						},
-					})
+					}, "inactive"))
 				}
 				steps = append(steps, actions.Action{
 					Todo:     actions.ActionExecute,
@@ -182,26 +178,18 @@ func processConfigs(ctx context.Context, c *components.Component, conman contain
 				continue
 			}
 			if serviceState.State == "active" || serviceState.State == "activating" {
-				waitState := "inactive"
-				steps = append(steps, actions.Action{
+				steps = append(steps, applySrcToAction(src, actions.Action{
 					Todo:     actions.ActionStop,
 					Parent:   c,
 					Target:   res,
 					Priority: 2,
-					Metadata: &actions.ActionMetadata{
-						ServiceUntilState: &waitState,
-					},
-				})
-				endState := "active"
-				steps = append(steps, actions.Action{
+				}, "inactive"))
+				steps = append(steps, applySrcToAction(src, actions.Action{
 					Todo:     actions.ActionStart,
 					Parent:   c,
 					Target:   res,
 					Priority: 4,
-					Metadata: &actions.ActionMetadata{
-						ServiceUntilState: &endState,
-					},
-				})
+				}, "active"))
 			}
 
 		case components.ResourceTypeVolume:
@@ -289,4 +277,22 @@ func findParents(c *components.Component, vol components.Resource) ([]components
 		}
 	}
 	return result, nil
+}
+
+func getServiceForResource(c *components.Component, res components.Resource) (manifests.ServiceResourceConfig, error) {
+	if src, err := c.ServiceConfigs.Get(res.Service()); err != nil {
+		return src, nil
+	} else if !errors.Is(err, components.ErrServiceConfigNotFound) {
+		return manifests.ServiceResourceConfig{}, err
+	}
+
+	return manifests.ServiceResourceConfig{Service: res.Service()}, nil
+}
+
+func applySrcToAction(src manifests.ServiceResourceConfig, act actions.Action, state string) actions.Action {
+	if src.Timeout != 0 {
+		act = act.With(actions.WithServiceTimeout(src.Timeout))
+	}
+	act = act.With(actions.WithServiceUntilState(state))
+	return act
 }
