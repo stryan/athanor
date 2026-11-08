@@ -50,7 +50,7 @@ run = "golangci-lint run"
 [tasks.test]
 description = "Run tests"
 sources = ["go.mod", "go.sum", "go.work", "go.work.sum", "**/*.go"]
-run = "gotestsum ./..."
+run = "gotestsum -- -tags '{{ vars.NOCGO }}' ./..."
 
 [tasks.install]
 depends = ["build"]
@@ -58,7 +58,7 @@ run = "cp ./bin/athanor-amd64 ~/.local/bin/"
 
 [tasks.release-tar]
 description = "generate release tarballs"
-depends = ["build", "docs"]
+depends = ["build"]
 usage = '''
   arg "[version]" help="Manually specify version being released"
 '''
