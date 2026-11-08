@@ -66,9 +66,6 @@ jobs:
           else
             mise ci-buildah --no-test --no-sign latest ${IMAGE_REGISTRY}/athanor
           fi
-      - name: Cleanup leftover containers
-        if: always()
-        run: mise run clean-test-containers
       - name: Logout registry
         run: podman logout "$IMAGE_REGISTRY"
       # - name: Logout registry

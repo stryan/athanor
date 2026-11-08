@@ -70,9 +70,6 @@ jobs:
       #   run: |
       #     export GITHUB_TOKEN="$(mise x -- fnox get GH_TOKEN)"
       #     mise r ci-release-gh $RC_FLAG --host github.com --repo stryan/athanor ${{ github.ref_name }}
-      - name: Cleanup leftover containers
-        if: always()
-        run: mise run clean-test-containers
       - name: Logout registry
         run: podman logout "$IMAGE_REGISTRY"
       # - name: Logout registry
