@@ -9,10 +9,11 @@ import (
 	"runtime/debug"
 	"time"
 
-	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"charm.land/log/v2"
+	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"github.com/urfave/cli/v3"
 	"primamateria.systems/materia/pkg/containers"
+	"primamateria.systems/materia/pkg/containers/native"
 	"primamateria.systems/materia/pkg/executor"
 	"primamateria.systems/materia/pkg/services"
 )
@@ -121,14 +122,15 @@ func main() {
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
-					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
+					conman, err := native.NewNativeManager(ctx, containers.ContainersConfig{
 						SecretsPrefix: "materia-",
 						Compression:   cfg.Compression,
+						Remote:        (os.Getenv("container") == "podman"),
 					})
 					if err != nil {
 						return err
 					}
-					serv, err := services.NewServices(ctx, &services.ServicesConfig{})
+					serv, err := services.NewServices(ctx, services.ServicesConfig{})
 					if err != nil {
 						return err
 					}
@@ -193,7 +195,7 @@ func main() {
 						StartTime: time.Now(),
 					}
 					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
-					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
+					conman, err := native.NewNativeManager(ctx, containers.ContainersConfig{
 						SecretsPrefix: "materia-",
 						Compression:   cfg.Compression,
 						Remote:        (os.Getenv("container") == "podman"),
@@ -205,7 +207,7 @@ func main() {
 					if cmd.IsSet("notify") {
 						shouldNotify = cmd.Bool("notify")
 					}
-					serv, err := services.NewServices(ctx, &services.ServicesConfig{})
+					serv, err := services.NewServices(ctx, services.ServicesConfig{})
 					if err != nil {
 						return err
 					}
@@ -293,7 +295,7 @@ func main() {
 						return fmt.Errorf("need restore target")
 					}
 					compMgr := &athanor.Reader{QuadletPrefix: cfg.QuadletDir, DataPrefix: cfg.DataDir}
-					conman, err := containers.NewPodmanManager(&containers.ContainersConfig{
+					conman, err := native.NewNativeManager(ctx, containers.ContainersConfig{
 						SecretsPrefix: "materia-",
 						Compression:   cfg.Compression,
 						Remote:        (os.Getenv("container") == "podman"),
@@ -302,7 +304,7 @@ func main() {
 						return err
 					}
 
-					serv, err := services.NewServices(ctx, &services.ServicesConfig{})
+					serv, err := services.NewServices(ctx, services.ServicesConfig{})
 					if err != nil {
 						return err
 					}

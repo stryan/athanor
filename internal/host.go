@@ -14,7 +14,10 @@ import (
 )
 
 func NewHostComponent(path string) (*components.Component, error) {
-	hostComp := components.NewComponent("host")
+	hostComp, err := components.NewComponent("host")
+	if err != nil {
+		return nil, err
+	}
 	hostComp.State = components.StateRoot
 	quadletEntries, err := os.ReadDir(path)
 	if err != nil {

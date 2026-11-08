@@ -22,11 +22,14 @@ type Reader struct {
 }
 
 func (r *Reader) GetComponent(name string) (*components.Component, error) {
-	comp := components.NewComponent(name)
+	comp, err := components.NewComponent(name)
+	if err != nil {
+		return nil, err
+	}
 	dataPath := filepath.Join(r.DataPrefix, name)
 	quadletPath := filepath.Join(r.QuadletPrefix, name)
 	versionFileExists := true
-	_, err := os.Stat(filepath.Join(dataPath, ".component_version"))
+	_, err = os.Stat(filepath.Join(dataPath, ".component_version"))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			versionFileExists = false

@@ -7,8 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
-	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"charm.land/log/v2"
+	athanor "git.saintnet.tech/stryan/athanor/internal"
 	"primamateria.systems/materia/pkg/actions"
 	"primamateria.systems/materia/pkg/components"
 	"primamateria.systems/materia/pkg/plan"
@@ -125,7 +125,7 @@ func GatherVolumes(targetComponent *components.Component) (*athanor.VolumeRestor
 
 func GatherServices(ctx context.Context, targetComponent *components.Component, serv *services.ServiceManager) ([]components.Resource, error) {
 	resultSet := components.NewResourceSet()
-	for _, src := range targetComponent.Services.List() {
+	for _, src := range targetComponent.ServiceConfigs.List() {
 		liveService, err := serv.GetService(ctx, src.Service)
 		if err != nil {
 			return []components.Resource{}, err

@@ -69,8 +69,11 @@ func PlanComponentBackup(ctx context.Context, conman containers.ContainerManager
 
 func LoadComponent(ctx context.Context, conMgr containers.ContainerManager, compMgr *Reader, compName string) (*components.Component, error) {
 	pipeline := loader.NewHostComponentPipeline(compMgr, conMgr)
-	comp := components.NewComponent(compName)
-	err := pipeline.Load(ctx, comp)
+	comp, err := components.NewComponent(compName)
+	if err != nil {
+		return nil, err
+	}
+	err = pipeline.Load(ctx, comp)
 	if err != nil {
 		return nil, err
 	}
